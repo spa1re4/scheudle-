@@ -1,7 +1,7 @@
 package org.example;
 
-import Dao.UserDAO;
 import Dao.ScheduleDAO;
+import Dao.UserDAO;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -10,21 +10,21 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ScheduleBot extends TelegramLongPollingBot {
 
     private final String BOT_USERNAME = "ScheduleComBot";
     private final String BOT_TOKEN = "7739118437:AAFaeMz-85h3X324yN6PR-br7MxKNMc4HQY";
 
-    private UserDAO userDAO = new UserDAO();
-    private ScheduleDAO scheduleDAO = new ScheduleDAO();
+    private final UserDAO userDAO = new UserDAO();
+    private final ScheduleDAO scheduleDAO = new ScheduleDAO();
 
-    // Словарь для хранения состояний залогиненных пользователей: chatId -> idCard
-    private Map<Long, String> loggedInUsers = new HashMap<>();
+    private final Map<Long, String> userState = new HashMap<>();
+    private final Map<Long, String> userDirection = new HashMap<>();
+
+    private final List<String> directions = Arrays.asList("comfci-23", "comceh-23", "comse-23", "eeair-23", "iemit-23");
+    private final List<String> daysOfWeek = Arrays.asList("Понедельник", "Вторник", "Среда", "Четверг", "Пятница");
 
     @Override
     public String getBotUsername() {
@@ -43,6 +43,7 @@ public class ScheduleBot extends TelegramLongPollingBot {
         if (keyboardMarkup != null) {
             message.setReplyMarkup(keyboardMarkup);
         }
+
         try {
             execute(message);
         } catch (TelegramApiException e) {
@@ -50,8 +51,7 @@ public class ScheduleBot extends TelegramLongPollingBot {
         }
     }
 
-    // Главное меню с кнопками Вход и Регистрация
-    private void sendMainMenu(long chatId) {
+    private void sendStartMenu(long chatId) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
 
@@ -62,96 +62,58 @@ public class ScheduleBot extends TelegramLongPollingBot {
         keyboard.add(row);
 
         keyboardMarkup.setKeyboard(keyboard);
-        sendMessage(chatId, "Выберите действие:", keyboardMarkup);
+
+        sendMessage(chatId, "Добро пожаловать! Выберите действие:", keyboardMarkup);
+        userState.put(chatId, "start");
     }
 
-    // Меню с кнопкой Назад и произвольным текстом
-    private void sendBackMenu(long chatId, String text) {
+    private void sendDirectionMenu(long chatId) {
         ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
         keyboardMarkup.setResizeKeyboard(true);
 
         List<KeyboardRow> keyboard = new ArrayList<>();
-        KeyboardRow row = new KeyboardRow();
-        row.add(new KeyboardButton("Назад"));
-        keyboard.add(row);
-
-        keyboardMarkup.setKeyboard(keyboard);
-        sendMessage(chatId, text, keyboardMarkup);
-    }
-
-    // Меню с кнопками дней недели + кнопка Стоп
-    private void sendWeekMenu(long chatId) {
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        keyboardMarkup.setResizeKeyboard(true);
-
-        List<KeyboardRow> keyboard = new ArrayList<>();
-
-        KeyboardRow row1 = new KeyboardRow();
-        row1.add(new KeyboardButton("Понедельник"));
-        row1.add(new KeyboardButton("Вторник"));
-        keyboard.add(row1);
-
-        KeyboardRow row2 = new KeyboardRow();
-        row2.add(new KeyboardButton("Среда"));
-        row2.add(new KeyboardButton("Четверг"));
-        keyboard.add(row2);
-
-        KeyboardRow row3 = new KeyboardRow();
-        row3.add(new KeyboardButton("Пятница"));
-        row3.add(new KeyboardButton("Суббота"));
-        keyboard.add(row3);
-
-        KeyboardRow row4 = new KeyboardRow();
-        row4.add(new KeyboardButton("Стоп"));
-        keyboard.add(row4);
-
-        keyboardMarkup.setKeyboard(keyboard);
-        sendMessage(chatId, "Выберите день недели:", keyboardMarkup);
-    }
-
-    // Клавиатура с одной кнопкой Назад
-    private ReplyKeyboardMarkup createBackKeyboard() {
-        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
-        keyboardMarkup.setResizeKeyboard(true);
-
-        KeyboardRow row = new KeyboardRow();
-        row.add(new KeyboardButton("Назад"));
-
-        List<KeyboardRow> keyboard = new ArrayList<>();
-        keyboard.add(row);
-
-        keyboardMarkup.setKeyboard(keyboard);
-        return keyboardMarkup;
-    }
-
-    // Обработка ввода логина/пароля или регистрации
-    private void handleInput(long chatId, String text) {
-        String[] parts = text.split("\\s+");
-        if (parts.length == 2) {
-            // Вход
-            String idCard = parts[0];
-            String password = parts[1];
-            if (userDAO.userExists(idCard, password)) {
-                loggedInUsers.put(chatId, idCard);
-                sendMessage(chatId, "Вход успешен! Добро пожаловать.", null);
-                sendWeekMenu(chatId);
-            } else {
-                sendMessage(chatId, "Неверный ID Card или пароль. Попробуйте снова.", null);
-            }
-        } else if (parts.length == 3) {
-            // Регистрация
-            String idCard = parts[0];
-            String password = parts[1];
-            String direction = parts[2];
-            boolean success = userDAO.registerUser(idCard, password, direction);
-            if (success) {
-                sendMessage(chatId, "Регистрация прошла успешно! Можете войти.", null);
-            } else {
-                sendMessage(chatId, "Ошибка регистрации: возможно, пользователь с таким ID Card уже существует.", null);
-            }
-        } else {
-            sendMessage(chatId, "Неверный формат ввода. Пожалуйста, используйте правильный формат.", null);
+        for (String dir : directions) {
+            KeyboardRow row = new KeyboardRow();
+            row.add(new KeyboardButton(dir));
+            keyboard.add(row);
         }
+
+        KeyboardRow stopRow = new KeyboardRow();
+        stopRow.add(new KeyboardButton("Назад"));
+        stopRow.add(new KeyboardButton("Стоп"));
+        keyboard.add(stopRow);
+
+        keyboardMarkup.setKeyboard(keyboard);
+
+        sendMessage(chatId, "Выберите направление:", keyboardMarkup);
+        userState.put(chatId, "selecting_direction");
+    }
+
+    private void sendDayMenu(long chatId) {
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        keyboardMarkup.setResizeKeyboard(true);
+
+        List<KeyboardRow> keyboard = new ArrayList<>();
+        for (String day : daysOfWeek) {
+            KeyboardRow row = new KeyboardRow();
+            row.add(new KeyboardButton(day));
+            keyboard.add(row);
+        }
+
+        KeyboardRow row = new KeyboardRow();
+        row.add(new KeyboardButton("Назад"));
+        row.add(new KeyboardButton("Стоп"));
+        keyboard.add(row);
+
+        keyboardMarkup.setKeyboard(keyboard);
+
+        sendMessage(chatId, "Выберите день недели:", keyboardMarkup);
+        userState.put(chatId, "selecting_day");
+    }
+
+    private void sendSchedule(long chatId, String direction, String day) {
+        String schedule = scheduleDAO.getSchedule(direction, day);
+        sendMessage(chatId, "Расписание для " + direction + " на " + day + ":\n" + schedule, null);
     }
 
     @Override
@@ -161,41 +123,90 @@ public class ScheduleBot extends TelegramLongPollingBot {
             long chatId = update.getMessage().getChatId();
 
             switch (text) {
-                case "/start" -> sendMainMenu(chatId);
+                case "/start":
+                    userState.remove(chatId);
+                    userDirection.remove(chatId);
+                    sendStartMenu(chatId);
+                    return;
 
-                case "Вход" -> sendBackMenu(chatId, "Введите ваш ID Card и пароль через пробел, например:\n12345 password123");
+                case "Вход":
+                case "Регистрация":
+                    sendMessage(chatId, "Введите ID Card и пароль через пробел:", null);
+                    userState.put(chatId, text.equals("Вход") ? "awaiting_login" : "awaiting_register");
+                    return;
 
-                case "Регистрация" -> sendBackMenu(chatId, "Введите ID Card, пароль и направление через пробел, например:\n12345 password123 IT");
-
-                case "Назад" -> {
-                    if (loggedInUsers.containsKey(chatId)) {
-                        sendWeekMenu(chatId);
+                case "Назад":
+                    String state = userState.getOrDefault(chatId, "");
+                    if (state.equals("selecting_day")) {
+                        sendDirectionMenu(chatId);
                     } else {
-                        sendMainMenu(chatId);
+                        sendStartMenu(chatId);
                     }
+                    return;
+
+                case "Стоп":
+                    userState.remove(chatId);
+                    userDirection.remove(chatId);
+                    sendStartMenu(chatId);
+                    return;
+            }
+
+            String state = userState.getOrDefault(chatId, "");
+
+            switch (state) {
+                case "awaiting_login": {
+                    String[] parts = text.split("\\s+");
+                    if (parts.length == 2) {
+                        boolean exists = userDAO.userExists(parts[0], parts[1]);
+                        if (exists) {
+                            sendDirectionMenu(chatId);
+                        } else {
+                            sendMessage(chatId, "Неверный ID Card или пароль. Попробуйте снова.", null);
+                        }
+                    } else {
+                        sendMessage(chatId, "Неверный формат. Введите ID и пароль через пробел.", null);
+                    }
+                    return;
                 }
 
-                case "Стоп" -> {
-                    if (loggedInUsers.containsKey(chatId)) {
-                        loggedInUsers.remove(chatId);
-                        sendMessage(chatId, "Сессия завершена. Для начала работы снова используйте /start", null);
-                        sendMainMenu(chatId);
+                case "awaiting_register": {
+                    String[] parts = text.split("\\s+");
+                    if (parts.length == 2) {
+                        boolean success = userDAO.registerUser(parts[0], parts[1]);
+                        String response = success
+                                ? "Регистрация прошла успешно! Теперь войдите."
+                                : "Ошибка регистрации. Возможно, ID уже зарегистрирован.";
+                        sendMessage(chatId, response, null);
                     } else {
-                        sendMessage(chatId, "Вы не вошли в систему.", null);
-                        sendMainMenu(chatId);
+                        sendMessage(chatId, "Неверный формат. Введите ID и пароль через пробел.", null);
                     }
+                    return;
                 }
 
-                case "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота" -> {
-                    if (loggedInUsers.containsKey(chatId)) {
-                        String schedule = scheduleDAO.getScheduleByDay(text);
-                        sendMessage(chatId, schedule, createBackKeyboard());
+                case "selecting_direction":
+                    if (directions.contains(text)) {
+                        userDirection.put(chatId, text);
+                        sendDayMenu(chatId);
                     } else {
-                        sendMessage(chatId, "Пожалуйста, войдите в систему, чтобы просмотреть расписание.", null);
+                        sendMessage(chatId, "Выберите направление из списка.", null);
                     }
-                }
+                    return;
 
-                default -> handleInput(chatId, text);
+                case "selecting_day":
+                    if (daysOfWeek.contains(text)) {
+                        String direction = userDirection.get(chatId);
+                        if (direction != null) {
+                            sendSchedule(chatId, direction, text);
+                        } else {
+                            sendMessage(chatId, "Ошибка: направление не выбрано.", null);
+                        }
+                    } else {
+                        sendMessage(chatId, "Выберите день недели из списка.", null);
+                    }
+                    return;
+
+                default:
+                    sendMessage(chatId, "Неизвестная команда. Нажмите /start.", null);
             }
         }
     }
