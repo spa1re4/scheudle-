@@ -1,21 +1,17 @@
 package org.example;
-
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
-
 import java.util.*;
-
 public class AdminHandler {
 
     // ✅ список админов — можно добавить несколько ID
     private static final Set<Long> ADMIN_IDS = Set.of(
-            1237259277L // 🔁 заменено на твой Telegram ID
+            1237259277L,
+            778224810L
     );
-
     private static final Map<Long, String> state = new HashMap<>();
     private static final Map<Long, String> selectedGroup = new HashMap<>();
     private static final Map<Long, String> selectedDay = new HashMap<>();
-
     public static boolean handleAdmin(MyBot bot, Message msg) {
         long chatId = msg.getChatId();
         String text = msg.getText();
@@ -62,7 +58,6 @@ public class AdminHandler {
 
         return false; // если не команда админа
     }
-
     private static void send(MyBot bot, long chatId, String text) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);

@@ -1,12 +1,16 @@
 package org.example;
 
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.*;
 
@@ -229,4 +233,24 @@ public class MyBot extends TelegramLongPollingBot {
     private boolean isWeekday(String text) {
         return List.of("Понедельник", "Вторник", "Среда", "Четверг", "Пятница").contains(text);
     }
+    @Override
+    public void onRegister() {
+        List<BotCommand> commandList = List.of(
+                new BotCommand("/start", "Запуск бота"),
+                new BotCommand("/update_schedule", "Обновить расписание (админ)"),
+                new BotCommand("/send_message", "Отправить сообщение (админ)")
+        );
+
+        SetMyCommands setMyCommands = new SetMyCommands();
+        setMyCommands.setCommands(commandList);
+        setMyCommands.setScope(new BotCommandScopeDefault());
+        setMyCommands.setLanguageCode("ru");
+
+        try {
+            this.execute(setMyCommands);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
 }
