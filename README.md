@@ -1,5 +1,5 @@
 # scheudle-
-
+``
 org.university.schedulebot
 ├── admin
 │   └── AdminCommands.java       # Обработка команд администратора (обновление расписания, рассылка сообщений).
@@ -15,8 +15,7 @@ org.university.schedulebot
 ├── Main.java                    # Точка входа в приложение, инициализирует бота.
 ├── schedule.db                  # База данных SQLite с таблицами пользователей и расписания.
 └── telegram.properties          # Файл с конфигурацией бота (токен, имя).
-
-
+``
 
 
 
