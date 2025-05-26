@@ -15,7 +15,11 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.util.*;
 
 public class MyBot extends TelegramLongPollingBot {
-    private final long ADMIN_ID = 1237259277L; // замени на свой Telegram chatId
+    private static final Set<Long> ADMIN_IDS = Set.of(
+            1237259277L,
+            778224810L
+    );
+
     private Map<Long, String> userStates = new HashMap<>();
     private Map<Long, String> tempPasswords = new HashMap<>();
     private Map<Long, String> tempGroups = new HashMap<>();
@@ -53,12 +57,12 @@ public class MyBot extends TelegramLongPollingBot {
             userStates.put(chatId, "");
         }
 
-        else if (text.equals("/update_schedule") && chatId == ADMIN_ID) {
+        else if (text.equals("/update_schedule") && ADMIN_IDS.contains(chatId)) {
             sendText(chatId, "🗓 Введите новое расписание в формате: группа-день:расписание\nПример: comfci-23-Понедельник:08:00 Математика");
             userStates.put(chatId, "WAITING_SCHEDULE_UPDATE");
         }
 
-        else if (state.equals("WAITING_SCHEDULE_UPDATE") && chatId == ADMIN_ID) {
+        else if (state.equals("WAITING_SCHEDULE_UPDATE") && ADMIN_IDS.contains(chatId)) {
             String[] parts = text.split(":", 2);
             if (parts.length != 2) {
                 sendText(chatId, "⚠️ Неверный формат. Пример: comfci-23-Понедельник:08:00 Математика");
@@ -91,12 +95,12 @@ public class MyBot extends TelegramLongPollingBot {
             userStates.put(chatId, "");
         }
 
-        else if (text.equals("/send_message") && chatId == ADMIN_ID) {
+        else if (text.equals("/send_message") && ADMIN_IDS.contains(chatId)) {
             sendText(chatId, "✉️ Введите текст сообщения для всех студентов:");
             userStates.put(chatId, "WAITING_BROADCAST_TEXT");
         }
 
-        else if (state.equals("WAITING_BROADCAST_TEXT") && chatId == ADMIN_ID) {
+        else if (state.equals("WAITING_BROADCAST_TEXT") && ADMIN_IDS.contains(chatId)) {
             List<Long> allUsers = UserDao.getAllUserChatIds();
             for (Long userId : allUsers) {
                 sendText(userId, "📢 Сообщение от администрации:\n" + text);
@@ -233,6 +237,7 @@ public class MyBot extends TelegramLongPollingBot {
     private boolean isWeekday(String text) {
         return List.of("Понедельник", "Вторник", "Среда", "Четверг", "Пятница").contains(text);
     }
+
     @Override
     public void onRegister() {
         List<BotCommand> commandList = List.of(
@@ -252,5 +257,4 @@ public class MyBot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
     }
-
 }
